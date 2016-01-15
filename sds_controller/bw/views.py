@@ -9,6 +9,7 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.renderers import JSONRenderer
 from rest_framework.parsers import JSONParser, FileUploadParser
+import redis
 
 # Create your views here.
 
@@ -25,7 +26,7 @@ def proxyaddress():
     """
     Reads the proxy address from django settings.
     """
-    return settings.SWIFT_URL+settings.SWIFT_API_VERSION+"/"
+    return settings.SWIFT_URL+"/"
 
 def is_valid_request(request):
     headers = {}
@@ -35,37 +36,47 @@ def is_valid_request(request):
     except:
         return None
 
+def get_redis_connection():
+    return redis.Redis(connection_pool=settings.REDIS_CON_POOL)
+
 @csrf_exempt
-def bw_list(request):
+def bw_list_redis(request):
     """
-    Ask the proxy server information about the assigned BW to each
+    Ask the redis database information about the assigned BW to each
     account and policy.
     """
+    try:
+        r = get_redis_connection()
+    except:
+        return JSONResponse('Error connecting with DB', status=500)
     headers = is_valid_request(request)
     if not headers:
-        return JSONResponse('You must be authenticated. You can authenticate yourself  with the header X-Auth-Token ', status=401)
+        return JSONResponse('You must be authenticated. You can authenticate yourself with the header X-Auth-Token ', status=401)
     if request.method == 'GET':
-        address = proxyaddress() + "/bwdict/"
-        r = requests.get(address, headers=headers)
-        return JSONResponse(r.content, content_type = 'application/json', status=r.status_code)
+        keys = r.keys("bw:*")
+        bwdict = dict()
+        for key in keys:
+            bw = r.hgetall(key)
+            bwdict[key[3:]] = bw
+        return JSONResponse(bwdict, status=200)
     return JSONResponse('Only HTTP GET /bw/ requests allowed.', status=405)
 
 @csrf_exempt
-def bw_detail(request, account):
+def bw_detail_redis(request, account):
     """
-    Ask the information of a certain tenant.
+    Ask the information of a certain tenant to redis.
     """
+    try:
+        r = get_redis_connection()
+    except:
+        return JSONResponse('Error connecting with DB', status=500)
     headers = is_valid_request(request)
     if not headers:
         return JSONResponse('You must be authenticated. You can authenticate yourself  with the header X-Auth-Token ', status=401)
     if request.method == 'GET':
-        dict_json = dict()
-        address = proxyaddress() + "/bwdict/"
-        r = requests.get(address)
-        data = json.loads(r.content, headers=headers)
-        for os in data:
-            dict_json[os] = { k : v for k,v in data[os].iteritems() if k == account}
-        return JSONResponse(json.dumps(dict_json), content_type = 'application/json', status=r.status_code)
+        bwdict = dict()
+        bwdict[account] = r.hgetall('bw:'+account)
+        return JSONResponse(bwdict, status=200)
     return JSONResponse('Only HTTP GET /bw/<account>/ requests allowed.', status=405)
 
 @csrf_exempt
@@ -77,7 +88,7 @@ def bw_clear_all(request):
     if not headers:
         return JSONResponse('You must be authenticated. You can authenticate yourself  with the header X-Auth-Token ', status=401)
     if request.method == 'PUT':
-        address = proxyaddress() + "/bwmod/"
+        address = proxyaddress() + "bwmod/"
         r = requests.get(address, headers=headers)
         return HttpResponse(r.content, content_type = 'application/json', status=r.status_code)
     return JSONResponse('Only HTTP PUT /bw/clear/ requests allowed.', status=405)
@@ -91,7 +102,7 @@ def bw_clear_account(request, account):
     if not headers:
         return JSONResponse('You must be authenticated. You can authenticate yourself  with the header X-Auth-Token ', status=401)
     if request.method == 'PUT':
-        address = proxyaddress() + "/bwmod/" + account + "/"
+        address = proxyaddress() + "bwmod/" + account + "/"
         r = requests.get(address,headers=headers)
         return HttpResponse(r.content, content_type = 'application/json', status=r.status_code)
     return JSONResponse('Only HTTP PUT /bw/clear/<account>/ requests allowed.', status=405)
@@ -106,7 +117,7 @@ def bw_clear_policy(request, account, policy):
     if not headers:
         return JSONResponse('You must be authenticated. You can authenticate yourself  with the header X-Auth-Token ', status=401)
     if request.method == 'PUT':
-        address = proxyaddress() + "/bwmod/" + account + "/" + policy + "/"
+        address = proxyaddress() + "bwmod/" + account + "/" + policy + "/"
         r = requests.get(address, headers=headers)
         return HttpResponse(r.content, content_type = 'application/json', status=r.status_code)
     return JSONResponse('Only HTTP PUT /bw/clear/<account>/<policy>/ requests allowed.', status=405)
@@ -122,7 +133,7 @@ def bw_update(request, account, bw_value):
     if not headers:
         return JSONResponse('You must be authenticated. You can authenticate yourself  with the header X-Auth-Token ', status=401)
     if request.method == 'PUT':
-        address = proxyaddress() + "/bwmod/" + account + "/" + bw_value + "/"
+        address = proxyaddress() + "bwmod/" + account + "/" + bw_value + "/"
         r = requests.get(address, headers=headers)
         return HttpResponse(r.content, content_type = 'application/json', status=r.status_code)
     return JSONResponse('Only HTTP PUT /bw/<account>/<bw_value>/ requests allowed.', status=405)
@@ -137,7 +148,7 @@ def bw_update_policy(request, account, policy, bw_value):
     if not headers:
         return JSONResponse('You must be authenticated. You can authenticate yourself  with the header X-Auth-Token ', status=401)
     if request.method == 'PUT':
-        address = proxyaddress() + "/bwmod/" + account + "/" + policy + "/" + bw_value + "/"
+        address = proxyaddress() + "bwmod/" + account + "/" + policy + "/" + bw_value + "/"
         r = requests.get(address, headers=headers)
         return HttpResponse(r.content, content_type = 'application/json', status=r.status_code)
     return JSONResponse('Only HTTP PUT /bw/clear/<account>/<policy>/<bw_value>/ requests allowed.', status=405)
@@ -152,7 +163,7 @@ def osinfo(request):
     if not headers:
         return JSONResponse('You must be authenticated. You can authenticate yourself  with the header X-Auth-Token ', status=401)
     if request.method == 'GET':
-        address = proxyaddress() + "/osinfo/"
+        address = proxyaddress() + "osinfo/"
         r = requests.get(address, headers=headers)
         return HttpResponse(r.content, content_type = 'application/json', status=r.status_code)
     return JSONResponse('Only HTTP GET /bw/osinfo/ requests allowed.', status=405)
