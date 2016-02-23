@@ -6,8 +6,8 @@ import requests
 
 class IO_Autobw_Assign(Metric):
     _sync = {}
-    _async = ['get_value', 'attach', 'detach', 'notify', 'start_consuming','stop_consuming', 'init_consum', 'stop_actor', 'get_redis_bw', \
-            'compute_assignations', 'parse_osinfo']
+    _async = ['get_value', 'attach', 'detach', 'notify', 'start_consuming','stop_consuming', 'init_consum', \
+            'stop_actor', 'get_redis_bw', 'compute_assignations', 'parse_osinfo', 'send_bw']
     _ref = ['attach', 'detach']
     _parallel = []
 
@@ -27,16 +27,19 @@ class IO_Autobw_Assign(Metric):
     def notify(self, body):
         self.parse_osinfo(json.loads(body))
         self.assignations = self.compute_assignations()
+        print self.assignations
+        self.send_bw()
         
+    def send_bw(self):
         for account in self.assignations:
             for policy in self.assignations[account]:
                 try:
                     if self.assignations[account][policy]['bw'] != \
-                                self.last_bw[account][policy]['bw']:
-                            for ip in self.assignations[account][policy]['ips']:
-                                address = "http://" + ip + "/bwmod/" + account + "/" \
-                                + policy + "/" + str(self.assignations[account][policy]['bw']) + "/"
-                                r = requests.get(address)
+                            self.last_bw[account][policy]['bw']:
+                        for ip in self.assignations[account][policy]['ips']:
+                            address = "http://" + ip + "/bwmod/" + account + "/" \
+                            + policy + "/" + str(self.assignations[account][policy]['bw']) + "/"
+                            r = requests.get(address)
                 except:
                     for ip in self.assignations[account][policy]['ips']:
                         address = "http://" + ip + "/bwmod/" + account + "/" \
@@ -69,8 +72,10 @@ class IO_Autobw_Assign(Metric):
                         assign[account][policy] = dict()
                     if not 'num' in assign[account][policy]:
                         assign[account][policy]['num'] = 1
+                        assign[account][policy]['real_bw'] = self.count[account][ip][policy]
                     else:
                         assign[account][policy]['num'] += 1
+                        assign[account][policy]['real_bw'] += self.count[account][ip][policy]
                     assign[account][policy]['bw'] = int(bw[account][policy])/assign[account][policy]['num']
                     if not 'ips' in assign[account][policy]:
                         assign[account][policy]['ips'] = []
@@ -88,12 +93,13 @@ class IO_Autobw_Assign(Metric):
                     policy = osinfo[ip][dev][th]["policy"]
                     if not account in self.count:
                         self.count[account] = {}
-                    self.count[account][ip] = {}
+                    if not ip in self.count[account]:
+                        self.count[account][ip] = {}
                     for obj in osinfo[ip][dev][th]["objects"]:
                         if not policy in self.count[account][ip]:
-                            self.count[account][ip][policy] = 1
+                            self.count[account][ip][policy] = obj['oid_calculated_BW']
                         else: 
-                            self.count[account][ip][policy] += 1
+                            self.count[account][ip][policy] += obj['oid_calculated_BW']
 
     def get_value(self):
         return self.value
