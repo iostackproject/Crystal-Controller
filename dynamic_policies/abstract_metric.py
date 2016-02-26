@@ -42,7 +42,6 @@ class Metric(object):
             self._observers[tenant] = set()
         if not observer in self._observers[tenant]:
             self._observers[tenant].add(observer)
-
     def detach(self, observer):
         """
         Asyncronous method. This method allows to be called remotelly. It is called from
@@ -98,7 +97,7 @@ class Metric(object):
 
     def notify(self, body):
         """
-        Method called from the consumer to indicate the value consumed from the rabbitmq queue. After receive the value, 
+        Method called from the consumer to indicate the value consumed from the rabbitmq queue. After receive the value,
         this value is communicated to all the observers subscribed to this metric.
         """
         data = json.loads(body)

@@ -24,16 +24,18 @@ class Consumer(object):
         self._channel.queue_declare(queue=queue)
         # queue_name = result.method.queue
         print 'routing_key', routing_key
+        
         if routing_key:
             self._channel.queue_bind(exchange=exchange,
                                queue=queue,
                                routing_key=routing_key)
 
-            self.consumer = self._channel.basic_consume(self.callback,
-                                            queue=queue,
-                                            no_ack=True)
+        self.consumer = self._channel.basic_consume(self.callback,
+                                        queue=queue,
+                                        no_ack=True)
         else:
             print "You must entry a routing key"
+
     def callback(self, ch, method, properties, body):
         self.obj.notify(body)
 

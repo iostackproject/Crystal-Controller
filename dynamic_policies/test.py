@@ -59,7 +59,7 @@ def start_test():
     host = init_host(tcpconf)
     global metrics
     metrics = {}
-    metrics["get_bw_info"] = host.spawn_id("get_bw_info", 'metrics.get_bw_info', 'Get_Bw_Info', ["amq.topic", "get_bw_info", "collectd.*.groupingtail.tenant_metrics.*.get_bw_info.#",host])
+    metrics["get_bw_info"] = host.spawn_id("get_bw_info", 'metrics.get_bw_info', 'Get_Bw_Info', ["amq.topic", "get_bw_info", host])
     metrics["get_disk_stats"] = host.spawn_id("get_disk_stats", 'metrics.get_disk_stats', 'Get_Disk_Stats', ["amq.topic", "get_disk_stats", "collectd.*.groupingtail.tenant_metrics.*.get_disk_stats.#",host])
     #metrics["get_ops_tenant"] = host.spawn_id("get_ops_tenant", 'metrics.get_ops_tenant', 'Get_Ops_Tenant', ["amq.topic", "get_ops_tenant", "collectd.*.groupingtail.tenant_metrics.*.get_ops_tenant.#",host])
     #metrics["put_ops_tenant"] = host.spawn_id("put_ops_tenant", 'metrics.put_ops_tenant', 'Put_Ops_Tenant', ["amq.topic", "put_ops_tenant", "collectd.*.groupingtail.tenant_metrics.*.put_ops_tenant.#",host])

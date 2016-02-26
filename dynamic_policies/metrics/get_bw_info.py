@@ -1,6 +1,6 @@
 from abstract_metric import Metric
 from metrics_parser import SwiftMetricsParse
-import json 
+import json
 import redis
 import requests
 
@@ -24,67 +24,40 @@ class Get_Bw_Info(Metric):
         self.count = {}
         self.last_bw = {}
 
+    def attach(self, observer, special=None):
+        """
+        Asyncronous method. This method allows to be called remotelly. It is called from
+        observers in order to subscribe in this workload metric. This observer will be
+        saved in a dictionary type structure where the key will be the tenant assigned in the observer,
+        and the value will be the PyActive proxy to connect to the observer.
+
+        :param observer: The PyActive proxy of the oberver rule that calls this method.
+        :type observer: **any** PyActive Proxy type
+        """
+        if special:
+            self.special_observer = observer
+        else:
+            tenant = observer.get_tenant()
+            if not tenant in self._observers.keys():
+                self._observers[tenant] = set()
+            if not observer in self._observers[tenant]:
+                self._observers[tenant].add(observer)
+
     def notify(self, body):
+        self.parse_osinfo(json.loads(body))
         try:
-            self.parse_osinfo(json.loads(body))
-            self.assignations = self.compute_assignations()
-            #self.send_bw()
-            print self.count
+            self.special_observer.update(self.name, self.count)
         except:
-            pass
-       
-    def send_bw(self):
-        for account in self.assignations:
-            for policy in self.assignations[account]:
-                try:
-                    if self.assignations[account][policy]['bw'] != \
-                            self.last_bw[account][policy]['bw']:
-                        for ip in self.assignations[account][policy]['ips']:
-                            address = "http://" + ip + "/bwmod/" + account + "/" \
-                            + policy + "/" + str(self.assignations[account][policy]['bw']) + "/"
-                            r = requests.get(address)
-                except:
-                    for ip in self.assignations[account][policy]['ips']:
-                        address = "http://" + ip + "/bwmod/" + account + "/" \
-                        + policy + "/" + str(self.assignations[account][policy]['bw']) + "/"
-                        r = requests.get(address)
-        self.last_bw = self.assignations
+            return "Not special observer"
 
-    def get_redis_bw(self):
-        """
-        Gets the bw assignation from the redis database
-        """
-        bw = dict()
-        try:
-            r = redis.Redis(connection_pool=redis.ConnectionPool(host=self.redis_host, port=self.redis_port, db=0))
-        except:
-            return Response('Error connecting with DB', status=500)
-        keys = r.keys("bw:*")
-        for key in keys:
-            bw[key[3:]] = r.hgetall(key)
-        return bw
+        for tentant, observer_set in self._observers.items():
+            if tenant in self.count.keys():
+                for observer in observer_set:
+                    observer.update(self.name, self.count[tenant])
 
-    def compute_assignations(self):
-        assign = dict()
-        bw = self.get_redis_bw()
-        for account in self.count:
-            assign[account] = dict()
-            for ip in self.count[account]:
-                for policy in self.count[account][ip]:
-                    if not policy in assign[account]:
-                        assign[account][policy] = dict()
-                    if not 'num' in assign[account][policy]:
-                        assign[account][policy]['num'] = 1
-                        assign[account][policy]['real_bw'] = self.count[account][ip][policy]
-                    else:
-                        assign[account][policy]['num'] += 1
-                        assign[account][policy]['real_bw'] += self.count[account][ip][policy]
-                    assign[account][policy]['bw'] = int(bw[account][policy])/assign[account][policy]['num']
-                    if not 'ips' in assign[account][policy]:
-                        assign[account][policy]['ips'] = []
-                    assign[account][policy]['ips'].append(ip)
+        print self.count
 
-        return assign
+
 
     def parse_osinfo(self, osinfo):
         for ip in osinfo:
@@ -101,7 +74,7 @@ class Get_Bw_Info(Metric):
                     for obj in osinfo[ip][dev][th]["objects"]:
                         if not policy in self.count[account][ip]:
                             self.count[account][ip][policy] = obj['oid_calculated_BW']
-                        else: 
+                        else:
                             self.count[account][ip][policy] += obj['oid_calculated_BW']
 
     def get_value(self):
