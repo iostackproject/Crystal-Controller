@@ -16,7 +16,7 @@ r = redis.StrictRedis(host='localhost', port=6379, db=0)
 logging.basicConfig(filename='./rule.log', format='%(asctime)s %(message)s', level=logging.INFO)
 
 
-class Rule(object):
+class Rule_Bw(object):
     """
     Rule: Each policy of each tenant is compiled as Rule. Rule is an Actor and it will be subscribed
     in the workloads metrics. When the data received from the workloads metrics satisfies
@@ -24,7 +24,7 @@ class Rule(object):
     also defined in the policy.
     """
     _sync = {'get_tenant':'2'}
-    _async = ['update', 'start_rule', 'stop_actor']
+    _async = ['update', 'start_rule', 'stop_actor', 'add_metric']
     _ref = []
     _parallel = []
 
@@ -47,11 +47,13 @@ class Rule(object):
 
         """
         logging.info('Rule init: OK')
-        logging.info('Rule: %s', rule_parsed.asList())
         self.base_uri = host_transport+'://'+host_ip+':'+str(host_port)+'/'
         self.host = host
+        self.redis_host='localhost'
+        self.redis_port=6379
+        self.last_bw={}
 
-    def add_metric(self, workload_name):
+    def add_metric(self):
         """
         The `add_metric()` method subscribes the rule to all workload metrics that it
         needs to check the conditions defined in the policy
@@ -60,12 +62,16 @@ class Rule(object):
         :type workload_name: **any** String type
 
         """
-        observer = self.host.lookup(self.base_uri+'metrics.get_bw_info/Get_Bw_Info/get_bw_info')
-        observer.attach(self.proxy, special=True)
+        try:
+            observer = self.host.lookup(self.base_uri+'metrics.get_bw_info/Get_Bw_Info/get_bw_info')
+            observer.attach(self.proxy, bw_obs=True)
+        except:
+            raise Exception('Error attaching to metric get_bw_info')
 
 
     def update(self, metric, info):
-        self.compute_assignations(info)
+        self.assignations = self.compute_assignations(info)
+        print self.assignations
 
     def compute_assignations(self, info):
         assign = dict()

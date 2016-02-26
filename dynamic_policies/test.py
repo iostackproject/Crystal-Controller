@@ -38,20 +38,6 @@ import signal
 # s.attach(rule)
 # time.sleep(40)
 # t.stop_consuming()
-def signal_handler(signal, frame):
-    print 'You pressed Ctrl+C!'
-    try:
-        for rule in rules.values():
-            rule.stop_actor()
-    except:
-        None
-    try:
-        for metric in metrics.values():
-            metric.stop_actor()
-    except:
-        None
-    host.shutdown()
-    sys.exit(0)
 
 def start_test():
     tcpconf = ('tcp', ('127.0.0.1', 6375))
@@ -59,8 +45,8 @@ def start_test():
     host = init_host(tcpconf)
     global metrics
     metrics = {}
-    metrics["get_bw_info"] = host.spawn_id("get_bw_info", 'metrics.get_bw_info', 'Get_Bw_Info', ["amq.topic", "get_bw_info", host])
-    metrics["get_disk_stats"] = host.spawn_id("get_disk_stats", 'metrics.get_disk_stats', 'Get_Disk_Stats', ["amq.topic", "get_disk_stats", "collectd.*.groupingtail.tenant_metrics.*.get_disk_stats.#",host])
+    metrics["get_bw_info"] = host.spawn_id("get_bw_info", 'metrics.get_bw_info', 'Get_Bw_Info', ["amq.topic", "get_bw_info", "collectd.*.groupingtail.tenant_metrics.*.get_disk_stats.#", host])
+    #metrics["get_disk_stats"] = host.spawn_id("get_disk_stats", 'metrics.get_disk_stats', 'Get_Disk_Stats', ["amq.topic", "get_disk_stats", "collectd.*.groupingtail.tenant_metrics.*.get_disk_stats.#",host])
     #metrics["get_ops_tenant"] = host.spawn_id("get_ops_tenant", 'metrics.get_ops_tenant', 'Get_Ops_Tenant', ["amq.topic", "get_ops_tenant", "collectd.*.groupingtail.tenant_metrics.*.get_ops_tenant.#",host])
     #metrics["put_ops_tenant"] = host.spawn_id("put_ops_tenant", 'metrics.put_ops_tenant', 'Put_Ops_Tenant', ["amq.topic", "put_ops_tenant", "collectd.*.groupingtail.tenant_metrics.*.put_ops_tenant.#",host])
     #metrics["head_ops_tenant"] = host.spawn_id("head_ops_tenant", 'metrics.head_ops_tenant', 'Head_Ops_Tenant', ["amq.topic", "head_ops_tenant", "collectd.*.groupingtail.tenant_metrics.*.head_ops_tenant.#",host])
@@ -79,6 +65,10 @@ def start_test():
         for metric in metrics.values():
             print 'metric!', metric
             metric.stop_actor()
+    
+    rule_bw = host.spawn_id('0', 'rules.rule_bw', 'Rule_Bw', [host, '127.0.0.1', 6375, 'tcp'])
+    rule_bw.add_metric()
+
 
     # global rules
     # rules = {}
@@ -113,12 +103,6 @@ def start_test():
     #             rules[cont] =  host.spawn_id(str(cont), 'rule', 'Rule', [rules_to_parse[key], key, host, '127.0.0.1', 6375, 'tcp'])
     #             rules[cont].start_rule()
     #             cont += 1
-
-
-    signal.signal(signal.SIGINT, signal_handler)
-    print 'Press Ctrl+C to kill the execution'
-    while True:
-        sleep(1)
 
         # metrics["througput"].attach(rules[0])
         # metrics["slowdown"].attach(rules[0])

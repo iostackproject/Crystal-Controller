@@ -11,7 +11,6 @@ class Consumer(object):
     _parallel = []
 
     def __init__(self, host, port, username, password, exchange, queue, routing_key, obj):
-
         credentials = pika.PlainCredentials(username, password)
         self._channel = pika.BlockingConnection(pika.ConnectionParameters(
             host=host, port=port, credentials=credentials)).channel()
@@ -30,9 +29,9 @@ class Consumer(object):
                                queue=queue,
                                routing_key=routing_key)
 
-        self.consumer = self._channel.basic_consume(self.callback,
-                                        queue=queue,
-                                        no_ack=True)
+            self.consumer = self._channel.basic_consume(self.callback,
+                                            queue=queue,
+                                            no_ack=True)
         else:
             print "You must entry a routing key"
 

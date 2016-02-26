@@ -24,7 +24,7 @@ class Get_Bw_Info(Metric):
         self.count = {}
         self.last_bw = {}
 
-    def attach(self, observer, special=None):
+    def attach(self, observer, bw_obs = None):
         """
         Asyncronous method. This method allows to be called remotelly. It is called from
         observers in order to subscribe in this workload metric. This observer will be
@@ -34,8 +34,8 @@ class Get_Bw_Info(Metric):
         :param observer: The PyActive proxy of the oberver rule that calls this method.
         :type observer: **any** PyActive Proxy type
         """
-        if special:
-            self.special_observer = observer
+        if bw_obs:
+            self.bw_observer = observer
         else:
             tenant = observer.get_tenant()
             if not tenant in self._observers.keys():
@@ -46,17 +46,14 @@ class Get_Bw_Info(Metric):
     def notify(self, body):
         self.parse_osinfo(json.loads(body))
         try:
-            self.special_observer.update(self.name, self.count)
+            self.bw_observer.update(self.name, self.count)
         except:
-            return "Not special observer"
+            print "Not bw_observer"
 
         for tentant, observer_set in self._observers.items():
             if tenant in self.count.keys():
                 for observer in observer_set:
                     observer.update(self.name, self.count[tenant])
-
-        print self.count
-
 
 
     def parse_osinfo(self, osinfo):
