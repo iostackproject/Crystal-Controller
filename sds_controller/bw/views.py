@@ -84,27 +84,35 @@ def bw_clear_all(request):
     """
     This call clears all the BW assignations for all accounts and policies.
     """
+    try:
+        r = get_redis_connection()
+    except:
+        return JSONResponse('Error connecting with DB', status=500)
     headers = is_valid_request(request)
     if not headers:
         return JSONResponse('You must be authenticated. You can authenticate yourself  with the header X-Auth-Token ', status=401)
     if request.method == 'PUT':
-        address = proxyaddress() + "bwmod/"
-        r = requests.get(address, headers=headers)
-        return HttpResponse(r.content, content_type = 'application/json', status=r.status_code)
-    return JSONResponse('Only HTTP PUT /bw/clear/ requests allowed.', status=405)
+        keys = r.keys("bw:*")
+        for key in keys:
+            r.delete(key)
+        return HttpResponse(request, status=200)
+    return JSONResponse('Only HTTP PUT /bw/clear/<account>/ requests allowed.', status=405)
 
 @csrf_exempt
 def bw_clear_account(request, account):
     """
     This call clears all the BW assignations entries for the selected account.
     """
+    try:
+        r = get_redis_connection()
+    except:
+        return JSONResponse('Error connecting with DB', status=500)
     headers = is_valid_request(request)
     if not headers:
         return JSONResponse('You must be authenticated. You can authenticate yourself  with the header X-Auth-Token ', status=401)
     if request.method == 'PUT':
-        address = proxyaddress() + "bwmod/" + account + "/"
-        r = requests.get(address,headers=headers)
-        return HttpResponse(r.content, content_type = 'application/json', status=r.status_code)
+        r.delete('bw:'+account)
+        return HttpResponse(request, status=200)
     return JSONResponse('Only HTTP PUT /bw/clear/<account>/ requests allowed.', status=405)
 
 @csrf_exempt
@@ -113,14 +121,17 @@ def bw_clear_policy(request, account, policy):
     This call clears all the BW assignations entries for the selected account
     and policy.
     """
+    try:
+        r = get_redis_connection()
+    except:
+        return JSONResponse('Error connecting with DB', status=500)
     headers = is_valid_request(request)
     if not headers:
         return JSONResponse('You must be authenticated. You can authenticate yourself  with the header X-Auth-Token ', status=401)
     if request.method == 'PUT':
-        address = proxyaddress() + "bwmod/" + account + "/" + policy + "/"
-        r = requests.get(address, headers=headers)
-        return HttpResponse(r.content, content_type = 'application/json', status=r.status_code)
-    return JSONResponse('Only HTTP PUT /bw/clear/<account>/<policy>/ requests allowed.', status=405)
+        r.hdel('bw:'+account, policy)
+        return HttpResponse(request, status=200)
+    return JSONResponse('Only HTTP PUT /bw/clear/<account>/ requests allowed.', status=405)
 
 
 @csrf_exempt
@@ -144,14 +155,18 @@ def bw_update_policy(request, account, policy, bw_value):
     This call assigns the specified bw to all the policies of the selected
     account
     '''
+    try:
+        r = get_redis_connection()
+    except:
+        return JSONResponse('Error connecting with DB', status=500)
     headers = is_valid_request(request)
     if not headers:
         return JSONResponse('You must be authenticated. You can authenticate yourself  with the header X-Auth-Token ', status=401)
     if request.method == 'PUT':
-        address = proxyaddress() + "bwmod/" + account + "/" + policy + "/" + bw_value + "/"
-        r = requests.get(address, headers=headers)
-        return HttpResponse(r.content, content_type = 'application/json', status=r.status_code)
-    return JSONResponse('Only HTTP PUT /bw/clear/<account>/<policy>/<bw_value>/ requests allowed.', status=405)
+        r.hset('bw:'+account, policy, bw_value)
+        return HttpResponse(request, status=200)
+    return JSONResponse('Only HTTP PUT /bw/clear/<account>/ requests allowed.', status=405)
+
 
 
 @csrf_exempt
@@ -167,3 +182,4 @@ def osinfo(request):
         r = requests.get(address, headers=headers)
         return HttpResponse(r.content, content_type = 'application/json', status=r.status_code)
     return JSONResponse('Only HTTP GET /bw/osinfo/ requests allowed.', status=405)
+

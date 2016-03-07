@@ -14,7 +14,7 @@ urlpatterns = [
     url(r'^/clear/(?P<account>\w+)/$', views.bw_clear_account),
     url(r'^/clear/(?P<account>\w+)/(?P<policy>\w+)/$', views.bw_clear_policy),
 
-    url(r'^/(?P<account>\w+)/(?P<bw_value>[0-9]+)/$', views.bw_update),
+    #url(r'^/(?P<account>\w+)/(?P<bw_value>[0-9]+)/$', views.bw_update),
     url(r'^/(?P<account>\w+)/(?P<policy>\w+)/(?P<bw_value>[0-9]+)/$', views.bw_update_policy),
 
 

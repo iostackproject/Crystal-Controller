@@ -87,7 +87,7 @@ class Rule_Bw(object):
 
     def compute_assignations(self, info):
         """
-        Algoritme d'assignació de BW
+        Algoritme d'assignacio de BW
         """
         assign = dict()
         bw = self.get_redis_bw()
@@ -103,7 +103,10 @@ class Rule_Bw(object):
                     else:
                         assign[account][policy]['num'] += 1
                         assign[account][policy]['real_bw'] += info[account][ip][policy]
-                    assign[account][policy]['bw'] = int(bw[account][policy])/assign[account][policy]['num']
+                    try:
+                        assign[account][policy]['bw'] = int(bw[account][policy])/assign[account][policy]['num']
+                    except:
+                        assign[account][policy]['bw'] = -1
                     if not 'ips' in assign[account][policy]:
                         assign[account][policy]['ips'] = []
                     assign[account][policy]['ips'].append(ip)
