@@ -24,7 +24,7 @@ class Get_Bw_Info(Metric):
         self.count = {}
         self.last_bw = {}
 
-    def attach(self, observer, bw_obs = None):
+    def attach(self, observer, bw_obs):
         """
         Asyncronous method. This method allows to be called remotelly. It is called from
         observers in order to subscribe in this workload metric. This observer will be
@@ -44,8 +44,8 @@ class Get_Bw_Info(Metric):
                 self._observers[tenant].add(observer)
 
     def notify(self, body):
-        self.parse_osinfo(json.loads(body))
         try:
+            self.parse_osinfo(json.loads(body))
             self.bw_observer.update(self.name, self.count)
         except:
             print "Not bw_observer"
