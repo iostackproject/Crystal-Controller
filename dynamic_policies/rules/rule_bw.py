@@ -58,6 +58,7 @@ class Rule_Bw(object):
         self.rmq_port = 5672
         self.rmq_exchange = 'bw_assignations'
         credentials = pika.PlainCredentials(self.rmq_user, self.rmq_pass)
+        # WHY BLOCKING & ALWAYS OPEN?
         self._channel = pika.BlockingConnection(pika.ConnectionParameters(
             host=self.redis_host, credentials=credentials)).channel()
         self._channel.exchange_declare(exchange=self.rmq_exchange,
@@ -88,6 +89,7 @@ class Rule_Bw(object):
     def compute_assignations(self, info):
         """
         Algoritme d'assignacio de BW
+        :return: dict[account][policy]['ips'][ip]:bw
         """
         assign = dict()
         bw = self.get_redis_bw()
@@ -103,13 +105,18 @@ class Rule_Bw(object):
                     else:
                         assign[account][policy]['num'] += 1
                         assign[account][policy]['real_bw'] += info[account][ip][policy]
+                    if not 'ips' in assign[account][policy]:
+                        assign[account][policy]['ips'] = dict()
                     try:
-                        assign[account][policy]['bw'] = int(bw[account][policy])/assign[account][policy]['num']
+                        assign[account][policy]['bw'] = int(bw[account][policy])
+                        assign[account][policy]['ips'][ip] = int(bw[account][policy])/assign[account][policy]['num']
                     except:
                         assign[account][policy]['bw'] = -1
-                    if not 'ips' in assign[account][policy]:
-                        assign[account][policy]['ips'] = []
-                    assign[account][policy]['ips'].append(ip)
+                        assign[account][policy]['ips'][ip] = -1
+            for policy in assign[account]:
+                for ip in assign[account][policy]['ips']:
+                    assign[account][policy]['ips'][ip] = int(bw[account][policy])/assign[account][policy]['num']
+
         return assign
 
 
@@ -133,20 +140,19 @@ class Rule_Bw(object):
         send = False
         for account in self.assignations:
             for policy in self.assignations[account]:
-                if account in self.last_bw and policy in self.last_bw[account]:
-                    if self.assignations[account][policy]['bw'] != self.last_bw[account][policy]['bw']:
-                        print "BW CHANGED"
-                        send = True
-                        address = address +'/'+account+'/'+policy+'/'+str(self.assignations[account][policy]['bw'])+'/ '
-                        for ip in self.assignations[account][policy]['ips']:
+                for ip in self.assignations[account][policy]['ips']:
+                    if account in self.last_bw and policy in self.last_bw[account] and ip in self.last_bw[account][policy]['ips']:
+                        if self.assignations[account][policy]['ips'][ip] != self.last_bw[account][policy]['ips'][ip]:
+                            send = True
+                            address = address + ip+'/'+account+'/'+policy+'/'+str(self.assignations[account][policy]['ips'][ip])+'/ '
                             routing_key = routing_key + ip.replace('.','-').replace(':','-') + "."
-                else:
-                    print "BW CHANGED"
-                    send = True
-                    address = address + "/" + account + "/" + policy + "/" + str(self.assignations[account][policy]['bw']) + "/ "
-                    for ip in self.assignations[account][policy]['ips']:
+                    else:
+                        send = True
+                        address = address +ip+ "/" + account + "/" + policy + "/" + str(self.assignations[account][policy]['ips'][ip]) + "/ "
                         routing_key = routing_key + ip.replace('.','-').replace(':','-') + "."
         if send:
+            print "BW CHANGED"
+            #Save changes to redis and check when init and when new requests in OSs
             self._channel.basic_publish(exchange='bw_assignations',routing_key=routing_key, body=str(address))
             print routing_key
             print address
