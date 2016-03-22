@@ -7,6 +7,7 @@ import json
 import redis
 import pika
 import logging
+import ConfigParser
 
 mappings = {'>': operator.gt, '>=': operator.ge,
         '==': operator.eq, '<=': operator.le, '<': operator.lt,
