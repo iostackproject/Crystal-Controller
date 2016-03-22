@@ -43,11 +43,17 @@ class Rule_Stats(object):
         :type host_transport: **any** String type.
 
         """
+        settings = ConfigParser.ConfigParser()
+        settings.read("./dynamic_policies.config")
         logging.info('Rule init: OK')
         self.base_uri = host_transport+'://'+host_ip+':'+str(host_port)+'/'
         self.host = host
-        self.redis_host='84.88.51.222'
-        self.redis_port=6379
+        self.redis_host = settings.get('redis', 'host')
+        self.redis_port = settings.get('redis', 'port')
+        self.redis_db = settings.get('redis', 'db')
+        self.sorting_method = "mean_bw"
+        self.key = "sorted_nodes:" + self.sorting_method
+
         try:
             self.r = redis.Redis(connection_pool=redis.ConnectionPool(host=self.redis_host, port=self.redis_port, db=0))
         except:
@@ -69,11 +75,15 @@ class Rule_Stats(object):
             raise Exception('Error attaching to metric get_disk_stats')
 
     def update(self, metric, info):
-        self.sorted_devices = self.sort(info)
+        self.update_redis(info)
 
         
     def sort(self, devices):
         return OrderedDict(sorted(devices.items(), key=lambda x: x[1]['mean-1min']))
+
+    def update_redis(self, nodes):
+        for n in nodes
+            self.r.hset(self.key, n.replace("/dev",""), nodes[n]['mean-1min'])
 
     def get_tenant(self):
         """

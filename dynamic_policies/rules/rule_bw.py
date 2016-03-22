@@ -50,12 +50,17 @@ class Rule_Bw(object):
         logging.info('Rule init: OK')
         self.base_uri = host_transport+'://'+host_ip+':'+str(host_port)+'/'
         self.host = host
-        self.redis_host='84.88.51.222'
-        self.redis_port=6379
-        self.rmq_user =  'guest'
-        self.rmq_pass = 'guest'
-        self.rmq_host = '84.88.51.222'
-        self.rmq_port = 5672
+
+        settings = ConfigParser.ConfigParser()
+        settings.read("./dynamic_policies.config")
+
+        self.rmq_user =  settings.get('rabbitmq', 'username')
+        self.rmq_pass = settings.get('rabbitmq', 'password')
+        self.rmq_host = settings.get('rabbitmq', 'host')
+        self.rmq_port = settings.get('rabbitmq', 'port')
+        self.redis_host = settings.get('redis', 'host')
+        self.redis_port = settings.get('redis', 'port')
+        self.redis_db = settings.get('redis', 'db')
         self.rmq_exchange = 'bw_assignations'
         self.credentials = pika.PlainCredentials(self.rmq_user, self.rmq_pass)
         try:
