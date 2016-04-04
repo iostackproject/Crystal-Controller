@@ -84,7 +84,7 @@ class Rule_Stats(object):
 
     def update_redis(self, nodes):
         for n in nodes
-            self.r.hset(self.key, n.replace("/dev",""), nodes[n]['mean-1min'])
+            self.r.hset(self.key, n.replace("/mnt",""), nodes[n]['mean-1min'])
 
     def get_tenant(self):
         """
